@@ -60,7 +60,7 @@ stepComm Skip                 = return Skip
 stepComm (Let v e)            = letComm v e
 stepComm (Seq c1 c2)          = seqComm c1 c2
 stepComm (IfThen b c)         = ifThenElseComm b c Skip
-stepComm r@(Repeat b c)       = return (Seq c (IfThenElse b Skip r)) 
+stepComm r@(Repeat b c)       = return (Seq c (IfThenElse b r Skip)) 
 stepComm (IfThenElse b c1 c2) = ifThenElseComm b c1 c2
 
 letComm :: MonadState m => Variable -> Exp Int -> m Comm
