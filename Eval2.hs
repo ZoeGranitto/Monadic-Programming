@@ -74,7 +74,8 @@ stepComm r@(Repeat b c)       = return (Seq c (IfThenElse b Skip r))
 stepComm (IfThenElse b c1 c2) = ifThenElseComm b c1 c2
 
 letComm :: (MonadState m, MonadError m) => Variable -> Exp Int -> m Comm
-letComm v e = do evalExp (EAssgn v e)
+letComm v e = do e' <- evalExp e
+                 update v e'
                  return Skip
 
 seqComm :: (MonadState m, MonadError m) => Comm -> Comm -> m Comm
@@ -86,40 +87,46 @@ ifThenElseComm :: (MonadState m, MonadError m) => (Exp Bool) -> Comm -> Comm -> 
 ifThenElseComm b c1 c2 = do b' <- evalExp b
                             return (if b' then c1 else c2)
 
-
--- Función auxiliar para evaluar expresiones binarias
---auxEvalExp :: Exp a -> Exp a -> (a -> a -> b) -> m b
-auxEvalExp e1 e2 f = do e1' <- evalExp e1
-                        e2' <- evalExp e2
-                        return (f e1' e2')
-
 -- Evalua una expresion
 evalExp :: (MonadState m, MonadError m) => Exp a -> m a
+evalExp BTrue = return True
+evalExp BFalse = return False
 evalExp (Const n) = return n
 evalExp (Var v) = lookfor v
+evalExp (Not e) = do e' <- evalExp e
+                     return (not e')
 evalExp (UMinus e) = do e' <- evalExp e
                         return (-e')
+evalExp (VarInc v) = incDecExp v (+)
+evalExp (VarDec v) = incDecExp v (-)
 evalExp (Plus e1 e2) = auxEvalExp e1 e2 (+)
 evalExp (Minus e1 e2) = auxEvalExp e1 e2 (-)
 evalExp (Times e1 e2) = auxEvalExp e1 e2 (*)
 evalExp (Div e1 e2) = auxEvalDiv e1 e2
-evalExp BTrue = return True
-evalExp BFalse = return False
-evalExp (Not e) = do e' <- evalExp e
-                     return (not e')
 evalExp (Lt e1 e2) = auxEvalExp e1 e2 (<)
 evalExp (Gt e1 e2) = auxEvalExp e1 e2 (>)
 evalExp (And e1 e2) = auxEvalExp e1 e2 (&&)
 evalExp (Or e1 e2) = auxEvalExp e1 e2 (||)
 evalExp (Eq e1 e2) = auxEvalExp e1 e2 (==)
 evalExp (NEq e1 e2) = auxEvalExp e1 e2 (/=)
-evalExp (EAssgn v e) = do e' <- evalExp e
-                          update v e'
-                          return e'
---evalExp ESeq e1 e2 = 
 
+-- Función auxiliar para evaluar expresiones binarias
+auxEvalExp :: (MonadState m, MonadError m) =>  Exp a -> Exp a -> (a -> a -> b) -> m b
+auxEvalExp e1 e2 f = do e1' <- evalExp e1
+                        e2' <- evalExp e2
+                        return (f e1' e2')
+
+auxEvalDiv :: (MonadState m, MonadError m) =>  Exp Int -> Exp Int -> m Int
 auxEvalDiv e1 e2 = do n2 <- evalExp e2
                       if n2 == 0 
                       then throw DivByZero 
                       else (do n1 <- evalExp e1
                                return (div n1 n2)) 
+
+-- Función auxiliar para evaluar las expresiones varinc y vardec
+incDecExp :: (MonadState m, MonadError m) =>  Variable -> (Int -> Int -> Int) -> m Int
+incDecExp v f = do
+                  n <- lookfor v
+                  let n' = f n 1  
+                  update v n'
+                  return n'

@@ -1,4 +1,4 @@
-%module PPLis where
+module PPLis where
 
 import           AST
 import           Text.PrettyPrint
@@ -14,6 +14,8 @@ pExp :: Exp a -> Doc
 pExp (Const  i )    = int i
 pExp (Var    x )    = pVar x
 pExp (UMinus n )    = text "-" <+> pExp n
+pExp (VarInc x )    = pVar x <+> text "++"
+pExp (VarDec x )    = pVar x <+> text "--"
 pExp (Plus  a b)    = pExp a <+> text "+" <+> pExp b
 pExp (Times a b)    = pExp a <+> text "*" <+> pExp b
 pExp (Minus a b)    = pExp a <+> text "-" <+> pExp b
@@ -28,8 +30,8 @@ pExp (And a b     ) = pExp a <+> text "&&" <+> pExp b
 pExp (Or  a b     ) = pExp a <+> text "||" <+> pExp b
 pExp (Not b       ) = text "!" <+> pExp b
 -- Ejercicio 2
-pExp (EAssgn x  e ) = parens $ pVar x <+> text "=" <+> pExp e
-pExp (ESeq   e1 e2) = pExp e1 <> comma <+> pExp e2
+-- pExp (EAssgn x  e ) = parens $ pVar x <+> text "=" <+> pExp e
+-- pExp (ESeq   e1 e2) = pExp e1 <> comma <+> pExp e2
 
 pComm :: Comm -> Doc
 pComm Skip        = text "skip"
