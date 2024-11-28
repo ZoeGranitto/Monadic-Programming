@@ -27,10 +27,10 @@ initEnv = M.empty
 
 newtype StateErrorTrace a = StateErrorTrace {runErrorTrace :: Env -> Either Error (a, Trace, Env) }
 
-instance Monad (StateErrorTrace s) where
+instance Monad StateErrorTrace where
   return x = StateErrorTrace (\s -> return (x, "", s))
   (StateErrorTrace f) >>= h = StateErrorTrace (\s -> do (a, t, s') <- f s
-                                                        (b, t', s'') <- runStateError (h a) s'
+                                                        (b, t', s'') <- runErrorTrace (h a) s'
                                                         return (b, t ++ t', s''))
 
 
@@ -57,7 +57,7 @@ instance MonadState StateErrorTrace where
                            Nothing -> Left UndefVar
                            Just x -> return (x, "", s)
   update v i = StateErrorTrace (\s -> return ((), t, update' v i s)) where update' = M.insert
-                                                                           t       = ("Let " ++ v ++ show i ++ " .\n")
+                                                                           t       = ("Let " ++ v ++ " " ++ show i ++ ". ")
 
 -- Ejercicio 3.f: Implementar el evaluador utilizando la monada StateErrorTrace.
 -- Evalua un programa en el estado nulo
@@ -65,7 +65,7 @@ instance MonadState StateErrorTrace where
 eval :: Comm -> Either Error (Env, Trace)
 eval p = case (runErrorTrace (stepCommStar p) initEnv) of
            Left e -> Left e
-           Right (a, t, s) -> Right (t,s)
+           Right (a, t, s) -> Right (s,t)
 
 -- Evalua multiples pasos de un comando, hasta alcanzar un Skip
 stepCommStar :: (MonadState m, MonadError m, MonadTrace m) => Comm -> m ()
@@ -81,22 +81,22 @@ stepComm (IfThen b c)         = ifThenElseComm b c Skip
 stepComm r@(Repeat b c)       = return (Seq c (IfThenElse b r Skip)) 
 stepComm (IfThenElse b c1 c2) = ifThenElseComm b c1 c2
 
-letComm :: (MonadState m, MonadError m) => Variable -> Exp Int -> m Comm
+letComm :: (MonadState m, MonadError m, MonadTrace m) => Variable -> Exp Int -> m Comm
 letComm v e = do e' <- evalExp e
                  update v e'
                  return Skip
 
-seqComm :: (MonadState m, MonadError m) => Comm -> Comm -> m Comm
+seqComm :: (MonadState m, MonadError m, MonadTrace m) => Comm -> Comm -> m Comm
 seqComm Skip c2 = return c2
 seqComm c1   c2 = do c1' <- stepComm c1
                      return (Seq c1' c2)
 
-ifThenElseComm :: (MonadState m, MonadError m) => (Exp Bool) -> Comm -> Comm -> m Comm
+ifThenElseComm :: (MonadState m, MonadError m, MonadTrace m) => (Exp Bool) -> Comm -> Comm -> m Comm
 ifThenElseComm b c1 c2 = do b' <- evalExp b
                             return (if b' then c1 else c2)
 
 -- Evalua una expresion 
-evalExp :: MonadState m, MonadError m, MonadTrace m) => (Exp a) -> m a
+evalExp :: (MonadState m, MonadError m, MonadTrace m) => (Exp a) -> m a
 evalExp BTrue = return True
 evalExp BFalse = return False
 evalExp (Const n) = return n
@@ -119,12 +119,12 @@ evalExp (Eq e1 e2) = auxEvalExp e1 e2 (==)
 evalExp (NEq e1 e2) = auxEvalExp e1 e2 (/=)
 
 -- Función auxiliar para evaluar expresiones binarias
-auxEvalExp :: (MonadState m, MonadError m) =>  Exp a -> Exp a -> (a -> a -> b) -> m b
+auxEvalExp :: (MonadState m, MonadError m, MonadTrace m) =>  Exp a -> Exp a -> (a -> a -> b) -> m b
 auxEvalExp e1 e2 f = do e1' <- evalExp e1
                         e2' <- evalExp e2
                         return (f e1' e2')
 
-auxEvalDiv :: (MonadState m, MonadError m) =>  Exp Int -> Exp Int -> m Int
+auxEvalDiv :: (MonadState m, MonadError m, MonadTrace m) =>  Exp Int -> Exp Int -> m Int
 auxEvalDiv e1 e2 = do n2 <- evalExp e2
                       if n2 == 0 
                       then throw DivByZero 
@@ -132,7 +132,7 @@ auxEvalDiv e1 e2 = do n2 <- evalExp e2
                                return (div n1 n2)) 
 
 -- Función auxiliar para evaluar las expresiones varinc y vardec
-incDecExp :: (MonadState m, MonadError m) =>  Variable -> (Int -> Int -> Int) -> m Int
+incDecExp :: (MonadState m, MonadError m, MonadTrace m) =>  Variable -> (Int -> Int -> Int) -> m Int
 incDecExp v f = do
                   n <- lookfor v
                   let n' = f n 1  
