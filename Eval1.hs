@@ -109,8 +109,7 @@ auxEvalExp e1 e2 f = do e1' <- evalExp e1
 
 -- Función auxiliar para evaluar las expresiones varinc y vardec
 incDecExp :: MonadState m => Variable -> (Int -> Int -> Int) -> m Int
-incDecExp v f = do
-                  n <- lookfor v
-                  let n' = f n 1  
-                  update v n'
-                  return n'
+incDecExp v f = do n <- lookfor v
+                   let n' = f n 1  
+                   update v n'
+                   return n'
