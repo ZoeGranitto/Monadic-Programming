@@ -97,8 +97,6 @@ evalExp (Not e) = do e' <- evalExp e
                      return (not e')
 evalExp (UMinus e) = do e' <- evalExp e
                         return (-e')
-evalExp (VarInc v) = incDecExp v (+)
-evalExp (VarDec v) = incDecExp v (-)
 evalExp (Plus e1 e2) = auxEvalExp e1 e2 (+)
 evalExp (Minus e1 e2) = auxEvalExp e1 e2 (-)
 evalExp (Times e1 e2) = auxEvalExp e1 e2 (*)
@@ -122,11 +120,3 @@ auxEvalDiv e1 e2 = do n2 <- evalExp e2
                       then throw DivByZero 
                       else (do n1 <- evalExp e1
                                return (div n1 n2)) 
-
--- Función auxiliar para evaluar las expresiones varinc y vardec
-incDecExp :: (MonadState m, MonadError m) =>  Variable -> (Int -> Int -> Int) -> m Int
-incDecExp v f = do
-                  n <- lookfor v
-                  let n' = f n 1  
-                  update v n'
-                  return n'

@@ -88,8 +88,6 @@ evalExp (Not e) = do e' <- evalExp e
                      return (not e')
 evalExp (UMinus e) = do e' <- evalExp e
                         return (-e')
-evalExp (VarInc v) = incDecExp v (+)
-evalExp (VarDec v) = incDecExp v (-)
 evalExp (Plus e1 e2) = auxEvalExp e1 e2 (+)
 evalExp (Minus e1 e2) = auxEvalExp e1 e2 (-)
 evalExp (Times e1 e2) = auxEvalExp e1 e2 (*)
@@ -106,10 +104,3 @@ auxEvalExp :: MonadState m => Exp a -> Exp a -> (a -> a -> b) -> m b
 auxEvalExp e1 e2 f = do e1' <- evalExp e1
                         e2' <- evalExp e2
                         return (f e1' e2')
-
--- Función auxiliar para evaluar las expresiones varinc y vardec
-incDecExp :: MonadState m => Variable -> (Int -> Int -> Int) -> m Int
-incDecExp v f = do n <- lookfor v
-                   let n' = f n 1  
-                   update v n'
-                   return n'
